@@ -54,23 +54,6 @@ export const Dashboard: React.FC = () => {
     };
   }, [entries]);
 
-  const weeklyData = useMemo(() => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      return date.toISOString().split('T')[0];
-    }).reverse();
-
-    return last7Days.map(date => {
-      const dayEntries = entries.filter(entry => entry.date === date);
-      return {
-        date,
-        cups: dayEntries.length,
-        caffeine: dayEntries.reduce((sum, entry) => sum + entry.caffeine, 0)
-      };
-    });
-  }, [entries]);
-
   const handleAddEntryClick = () => {
     setPasscodeAction('add');
     setShowPasscodeModal(true);
@@ -189,7 +172,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <WeeklyChart data={weeklyData} />
+          <WeeklyChart entries={entries} />
           <MonthlyOverview entries={entries} />
         </div>
 

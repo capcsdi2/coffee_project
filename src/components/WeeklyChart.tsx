@@ -1,28 +1,73 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { BarChart3, TrendingUp, Coffee } from 'lucide-react';
+import { BarChart3, TrendingUp, Coffee, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 interface WeeklyChartProps {
-  data: Array<{
+  entries: Array<{
     date: string;
-    cups: number;
+    type: string;
+    size: string;
     caffeine: number;
   }>;
 }
 
-export const WeeklyChart: React.FC<WeeklyChartProps> = ({ data }) => {
+export const WeeklyChart: React.FC<WeeklyChartProps> = ({ entries }) => {
+  const [selectedWeekOffset, setSelectedWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
+
+  const weekData = useMemo(() => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + (selectedWeekOffset * 7));
+    
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      return date.toISOString().split('T')[0];
+    });
+
+    return weekDays.map(date => {
+      const dayEntries = entries.filter(entry => entry.date === date);
+      return {
+        date,
+        cups: dayEntries.length,
+        caffeine: dayEntries.reduce((sum, entry) => sum + entry.caffeine, 0)
+      };
+    });
+  }, [entries, selectedWeekOffset]);
+
   const formatDate = (date: string) => {
     return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' });
   };
 
-  const chartData = data.map(day => ({
+  const getWeekRange = () => {
+    const firstDay = weekData[0]?.date;
+    const lastDay = weekData[6]?.date;
+    if (!firstDay || !lastDay) return '';
+    
+    const start = new Date(`${firstDay}T00:00:00`);
+    const end = new Date(`${lastDay}T00:00:00`);
+    
+    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  };
+
+  const chartData = weekData.map(day => ({
     ...day,
     day: formatDate(day.date)
   }));
 
-  const totalWeeklyCups = data.reduce((sum, day) => sum + day.cups, 0);
-  const totalWeeklyCaffeine = data.reduce((sum, day) => sum + day.caffeine, 0);
+  const totalWeeklyCups = weekData.reduce((sum, day) => sum + day.cups, 0);
+  const totalWeeklyCaffeine = weekData.reduce((sum, day) => sum + day.caffeine, 0);
   const avgDailyCups = totalWeeklyCups / 7;
+
+  const canGoBack = () => {
+    // Allow going back up to 12 weeks
+    return selectedWeekOffset > -12;
+  };
+
+  const canGoForward = () => {
+    // Don't allow going into future weeks
+    return selectedWeekOffset < 0;
+  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -50,16 +95,46 @@ export const WeeklyChart: React.FC<WeeklyChartProps> = ({ data }) => {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Weekly Overview</h2>
-            <p className="text-gray-600">Last 7 days consumption</p>
+            <p className="text-gray-600">{getWeekRange()}</p>
           </div>
         </div>
         
-        <div className="text-right">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-green-600">
             <TrendingUp className="w-4 h-4" />
             <span className="text-sm font-medium">
               {avgDailyCups.toFixed(1)} cups/day avg
             </span>
+          </div>
+          
+          {/* Week Navigation */}
+          <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+            <button
+              onClick={() => setSelectedWeekOffset(prev => prev - 1)}
+              disabled={!canGoBack()}
+              className="p-2 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Previous week"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+            
+            <div className="flex items-center gap-2 px-3 py-1">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 min-w-[80px] text-center">
+                {selectedWeekOffset === 0 ? 'This Week' : 
+                 selectedWeekOffset === -1 ? 'Last Week' : 
+                 `${Math.abs(selectedWeekOffset)} weeks ago`}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => setSelectedWeekOffset(prev => prev + 1)}
+              disabled={!canGoForward()}
+              className="p-2 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Next week"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
           </div>
         </div>
       </div>
