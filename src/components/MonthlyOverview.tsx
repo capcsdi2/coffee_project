@@ -42,7 +42,6 @@ export const MonthlyOverview: React.FC<MonthlyOverviewProps> = ({ entries }) => 
     const dailyData = [];
     const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
     const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
-    const today = new Date();
     const maxDate = targetDate.getMonth() === today.getMonth() && targetDate.getFullYear() === today.getFullYear() ? today : endOfMonth;
     
     for (let d = new Date(startOfMonth); d <= maxDate; d.setDate(d.getDate() + 1)) {
