@@ -25,19 +25,6 @@ class DatabaseService {
   private readonly DEFAULT_PASSCODE = 'coffee123';
 
   async init(): Promise<void> {
-    // Check if we have a valid session or if we need to sign in anonymously
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      // Sign in anonymously for demo purposes
-      // In a real app, you'd implement proper authentication
-      const { error } = await supabase.auth.signInAnonymously();
-      if (error) {
-        console.error('Error signing in anonymously:', error);
-        throw new Error('Failed to initialize database connection');
-      }
-    }
-
     // Initialize default settings if they don't exist
     await this.initializeDefaultSettings();
   }
