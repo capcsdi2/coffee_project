@@ -8,7 +8,7 @@ import { WeeklyChart } from './WeeklyChart';
 import { MonthlyOverview } from './MonthlyOverview';
 import { PasscodeModal } from './PasscodeModal';
 import { AdminPanel } from './AdminPanel';
-import { Coffee, TrendingUp, Shield } from 'lucide-react';
+import { Coffee, TrendingUp, Shield, AlertCircle } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const [entries, setEntries] = useState<CoffeeEntry[]>([]);
@@ -17,6 +17,7 @@ export const Dashboard: React.FC = () => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [passcodeAction, setPasscodeAction] = useState<'add' | 'admin'>('add');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     initializeDatabase();
@@ -24,10 +25,12 @@ export const Dashboard: React.FC = () => {
 
   const initializeDatabase = async () => {
     try {
+      setError(null);
       await databaseService.init();
       await loadEntries();
     } catch (error) {
       console.error('Failed to initialize database:', error);
+      setError('Failed to connect to database. Please check your Supabase configuration.');
     } finally {
       setIsLoading(false);
     }
@@ -39,6 +42,7 @@ export const Dashboard: React.FC = () => {
       setEntries(dbEntries);
     } catch (error) {
       console.error('Failed to load entries:', error);
+      setError('Failed to load coffee entries from database.');
     }
   };
 
@@ -87,31 +91,34 @@ export const Dashboard: React.FC = () => {
       setShowAddForm(false);
     } catch (error) {
       console.error('Failed to add entry:', error);
+      setError('Failed to add coffee entry. Please try again.');
     }
   };
 
   const deleteEntry = async (id: string | number) => {
     try {
-      await databaseService.deleteEntry(Number(id));
+      await databaseService.deleteEntry(id);
       await loadEntries();
     } catch (error) {
       console.error('Failed to delete entry:', error);
+      setError('Failed to delete coffee entry. Please try again.');
     }
   };
 
-  const updateEntry = async (id: number, entry: Partial<CoffeeEntry>) => {
+  const updateEntry = async (id: string, entry: Partial<CoffeeEntry>) => {
     try {
       await databaseService.updateEntry(id, entry);
       await loadEntries();
     } catch (error) {
       console.error('Failed to update entry:', error);
+      setError('Failed to update coffee entry. Please try again.');
     }
   };
 
   // Convert database entries to component format
   const convertedEntries = entries.map(entry => ({
     ...entry,
-    id: entry.id?.toString() || ''
+    id: entry.id || ''
   }));
 
   if (isLoading) {
@@ -119,7 +126,35 @@ export const Dashboard: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading coffee tracker...</p>
+          <p className="text-gray-600">Connecting to database...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Database Connection Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+            <h3 className="font-semibold text-blue-800 mb-2">Setup Instructions:</h3>
+            <ol className="text-sm text-blue-700 space-y-1">
+              <li>1. Click "Connect to Supabase" in the top right</li>
+              <li>2. Set up your Supabase project</li>
+              <li>3. Configure your environment variables</li>
+            </ol>
+          </div>
+          <button
+            onClick={initializeDatabase}
+            className="mt-4 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );

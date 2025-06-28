@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { databaseService } from '../services/database';
 import { Lock, Eye, EyeOff, X } from 'lucide-react';
 
 interface PasscodeModalProps {
@@ -41,9 +42,8 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
     setError('');
 
     try {
-      // In a real app, this would be an API call
-      // For now, we'll simulate the check
-      const storedPasscode = localStorage.getItem('admin_passcode') || 'coffee123';
+      // Get the stored passcode from Supabase
+      const storedPasscode = await databaseService.getSetting('admin_passcode') || 'coffee123';
       
       if (passcode === storedPasscode) {
         // Handle passcode saving preference
@@ -62,7 +62,7 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
         setError('Invalid passcode. Please try again.');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('An error occurred while verifying passcode. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { CoffeeEntry } from '../services/database';
+import { CoffeeEntry, databaseService } from '../services/database';
 import { Settings, Trash2, Edit3, Save, X, Shield, Coffee, Database, Key } from 'lucide-react';
 
 interface AdminPanelProps {
   entries: CoffeeEntry[];
-  onDeleteEntry: (id: number) => void;
-  onUpdateEntry: (id: number, entry: Partial<CoffeeEntry>) => void;
+  onDeleteEntry: (id: string) => void;
+  onUpdateEntry: (id: string, entry: Partial<CoffeeEntry>) => void;
   onClose: () => void;
 }
 
@@ -15,7 +15,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateEntry,
   onClose
 }) => {
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<CoffeeEntry>>({});
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
@@ -40,7 +40,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditForm({});
   };
 
-  const handlePasscodeChange = () => {
+  const handlePasscodeChange = async () => {
     setPasscodeError('');
     setPasscodeSuccess('');
 
@@ -59,11 +59,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    // In a real app, this would be an API call
-    localStorage.setItem('admin_passcode', newPasscode);
-    setPasscodeSuccess('Passcode updated successfully');
-    setNewPasscode('');
-    setConfirmPasscode('');
+    try {
+      await databaseService.setSetting('admin_passcode', newPasscode);
+      setPasscodeSuccess('Passcode updated successfully');
+      setNewPasscode('');
+      setConfirmPasscode('');
+    } catch (error) {
+      setPasscodeError('Failed to update passcode. Please try again.');
+    }
   };
 
   const formatDate = (date: string) => {

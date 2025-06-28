@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CoffeeEntry, CoffeeType, CoffeeSize, BrewingMethod } from '../types/coffee';
+import { databaseService } from '../services/database';
 import { X, Coffee } from 'lucide-react';
 
 interface AddCoffeeFormProps {
@@ -7,11 +8,11 @@ interface AddCoffeeFormProps {
   onCancel: () => void;
 }
 
-const coffeeTypes: CoffeeType[] = ['Espresso', 'Americano', 'Latte', 'Cappuccino', 'Macchiato', 'Mocha', 'Cold Brew', 'Drip Coffee'];
+const defaultCoffeeTypes: CoffeeType[] = ['Espresso', 'Americano', 'Latte', 'Cappuccino', 'Macchiato', 'Mocha', 'Cold Brew', 'Drip Coffee'];
 const coffeeSizes: CoffeeSize[] = ['Small', 'Medium', 'Large', 'Extra Large'];
-const brewingMethods: BrewingMethod[] = ['Espresso Machine', 'French Press', 'Pour Over', 'Cold Brew', 'Drip', 'Aeropress'];
+const defaultBrewingMethods: BrewingMethod[] = ['Espresso Machine', 'French Press', 'Pour Over', 'Cold Brew', 'Drip', 'Aeropress'];
 
-const caffeineContent: Record<CoffeeType, Record<CoffeeSize, number>> = {
+const defaultCaffeineContent: Record<CoffeeType, Record<CoffeeSize, number>> = {
   'Espresso': { 'Small': 63, 'Medium': 94, 'Large': 125, 'Extra Large': 156 },
   'Americano': { 'Small': 77, 'Medium': 154, 'Large': 231, 'Extra Large': 308 },
   'Latte': { 'Small': 64, 'Medium': 128, 'Large': 192, 'Extra Large': 256 },
@@ -32,10 +33,52 @@ export const AddCoffeeForm: React.FC<AddCoffeeFormProps> = ({ onAddEntry, onCanc
     notes: ''
   });
 
+  const [coffeeTypes, setCoffeeTypes] = useState<string[]>(defaultCoffeeTypes);
+  const [brewingMethods, setBrewingMethods] = useState<string[]>(defaultBrewingMethods);
+  const [caffeineContent, setCaffeineContent] = useState(defaultCaffeineContent);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadDatabaseData();
+  }, []);
+
+  const loadDatabaseData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Load coffee types and brewing methods from database
+      const [dbCoffeeTypes, dbBrewingMethods] = await Promise.all([
+        databaseService.getCoffeeTypes(),
+        databaseService.getBrewingMethods()
+      ]);
+
+      if (dbCoffeeTypes.length > 0) {
+        const types = dbCoffeeTypes.map(type => type.name);
+        setCoffeeTypes(types);
+        
+        // Build caffeine content mapping from database
+        const caffeineMap: Record<string, Record<string, number>> = {};
+        dbCoffeeTypes.forEach(type => {
+          caffeineMap[type.name] = type.caffeine;
+        });
+        setCaffeineContent(caffeineMap as any);
+      }
+
+      if (dbBrewingMethods.length > 0) {
+        setBrewingMethods(dbBrewingMethods);
+      }
+    } catch (error) {
+      console.error('Error loading database data:', error);
+      // Fall back to default values if database fails
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const caffeine = caffeineContent[formData.type][formData.size];
+    const caffeine = caffeineContent[formData.type]?.[formData.size] || 0;
     
     onAddEntry({
       ...formData,
@@ -44,7 +87,18 @@ export const AddCoffeeForm: React.FC<AddCoffeeFormProps> = ({ onAddEntry, onCanc
     });
   };
 
-  const estimatedCaffeine = caffeineContent[formData.type][formData.size];
+  const estimatedCaffeine = caffeineContent[formData.type]?.[formData.size] || 0;
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+          <span className="ml-3 text-gray-600">Loading form data...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
